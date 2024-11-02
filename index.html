@@ -7,57 +7,127 @@
     <title>Test AWS Lambda</title>
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
-    <h1>Simple Demo for PUT, GET, and DELETE</h1>
+    <h1>My Simple Inventory App</h1>
     <p id="lambda-info">
         <!-- loaded with AJAX -->
     </p>
 
+    <button id="load-data">Load Data</button>
+
+    <table id="data-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="table-body">
+            <!-- loaded with rows here -->
+        </tbody>
+    </table>
+
     <hr>
-    <button id="send-data">Send Data</button>
-    <p>Sends an example JSON object to the server with id 11111</p>
+    <form id="add-form">
+        <p>Add New Item to Database</p>
+        <label for="id">ID:</label>
+        <input type="number" id="item-id" required><br>
+
+        <label for="name">Name:</label>
+        <input type="text" id="item-name" required><br>
+
+        <label for="price">Price:</label>
+        <input type="number" id="item-price" required><br>
+
+        <button type="submit">Add Item</button>
+    </form>
+
     <script>
-        document.getElementById("send-data").onclick = function () {
+        document.getElementById("add-form").onsubmit = function (event) {
+            event.preventDefault(); // Prevent the default form submission
+
             let xhr = new XMLHttpRequest();
-            xhr.open("PUT", "Your Lambda here");
+            xhr.open("PUT", "https://c0cfd7la93.execute-api.us-east-2.amazonaws.com/items");
             xhr.setRequestHeader("Content-Type", "application/json");
-            xhr.send(JSON.stringify({
-                "id": "6666666",
-                "price": 19,
-                "name": "test put value"
-            }));
+
+            //Create the JSON object 
+            let itemData = {
+                id: document.getElementById("item-id").value,
+                name: document.getElementById("item-name").value,
+                price: document.getElementById("item-price").value
+            };
+
+            // Send the JSON string of the object
+            xhr.send(JSON.stringify(itemData));
+
+
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    document.getElementById("load-data").click();
+                    document.getElementById("item-id").value = '';
+                    document.getElementById("item-name").value = '';
+                    document.getElementById("item-price").value = '';
+                } else {
+                    console.error(`HTTP error: ${xhr.status}`);
+                }
+            };
         }
     </script>
 
-    <button id="load-data">Load Data</button>
-    <p>Loads data from the server</p>
+
     <script>
         document.getElementById("load-data").onclick = function () {
-            let lambda = document.getElementById("lambda-info");
             let xhr = new XMLHttpRequest();
             xhr.addEventListener("load", function () {
-                lambda.innerHTML = xhr.response;
+                // Parse the JSON response
+                let data = JSON.parse(xhr.response);
+                let tableBody = document.getElementById("table-body");
+                // Clear previous info 
+                tableBody.innerHTML = '';
+
+                // Create new rows for each item
+                data.forEach(item => {
+                    const row = `
+                            <tr>
+                                <td>${item.id}</td>
+                                <td>${item.name}</td>
+                                <td>${item.price}</td>
+                                <td>
+                                    <button class="delete-button" data-id="${item.id}">Delete</button>
+                                </td>
+                            </tr>`;
+                    tableBody.innerHTML += row;
+                });
+
+                document.querySelectorAll('.delete-button').forEach(button => {
+                    button.onclick = function () {
+                        let xhrDelete = new XMLHttpRequest();
+                        const itemId = this.getAttribute("data-id");
+                        xhr.open("DELETE", `https://c0cfd7la93.execute-api.us-east-2.amazonaws.com/items/${itemId}`);
+                        xhr.setRequestHeader("Content-Type", "application/json");
+                        xhr.send();
+                        xhr.onload = function () {
+                            if (xhr.status === 200) {
+                                document.getElementById("load-data").click();
+                            } else {
+                                console.error(`HTTP error: ${xhrDelete.status}`);
+                            }
+                        };
+                    };
+                });
             });
-            xhr.open("GET", "Your Lambda here");
+            xhr.open("GET", "https://c0cfd7la93.execute-api.us-east-2.amazonaws.com/items");
             xhr.send();
         }
 
     </script>
-
     <hr>
-    <button id="delete-data">Delete Data</button>
-    <p>Deletes a JSON object from the server with 11111</p>
-    <script>
-        document.getElementById("delete-data").onclick = function () {
-            let xhr = new XMLHttpRequest();
-            xhr.open("DELETE", "Your Lambda here");
-            xhr.setRequestHeader("Content-Type", "application/json");
-            xhr.send();
-        }
-    </script>
+
 </body>
 
 </html>
